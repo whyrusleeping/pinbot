@@ -32,7 +32,7 @@ var authTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
 		return true
 	},
-	func(con *hb.IrcCon, mes *hb.Message) {
+	func(con *hb.IrcCon, mes *hb.Message) bool {
 		if isFriend(mes.From) {
 			// do not consume messages from authed users
 			return false
@@ -51,7 +51,17 @@ var pinTrigger = &hb.Trigger{
 			con.Channels[mes.To].Say("what do you want me to pin?")
 		} else {
 			con.Channels[mes.To].Say(fmt.Sprintf("now pinning %s", parts[1]))
-			err := sh.Pin(parts[1])
+			out, err := sh.Refs(parts[1], true)
+			if err != nil {
+				con.Channels[mes.To].Say(fmt.Sprintf("failed to grab refs for %s: %s", parts[1], err))
+				return true
+			}
+
+			for k := range out {
+				fmt.Println(k)
+			}
+
+			err = sh.Pin(parts[1])
 			if err != nil {
 				con.Channels[mes.To].Say(fmt.Sprintf("failed to pin %s: %s", parts[1], err))
 			} else {

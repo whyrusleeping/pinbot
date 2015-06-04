@@ -108,6 +108,7 @@ func main() {
 
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(listTrigger)
+	con.AddTrigger(OmNomNom)
 	con.AddTrigger(EatEverything)
 	con.Start()
 	con.Join("#ipfs")

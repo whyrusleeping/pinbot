@@ -33,7 +33,8 @@ var OmNomNom = &hb.Trigger{
 		return mes.Content == "!botsnack"
 	},
 	func(irc *hb.IrcCon, mes *hb.Message) bool {
-		con.Channels[mes.To].Say("om nom nom")
+		irc.Channels[mes.To].Say("om nom nom")
+		return true
 	},
 }
 

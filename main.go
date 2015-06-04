@@ -28,6 +28,15 @@ var EatEverything = &hb.Trigger{
 	},
 }
 
+var OmNomNom = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return mes.Content == "!botsnack"
+	},
+	func(irc *hb.IrcCon, mes *hb.Message) bool {
+		con.Channels[mes.To].Say("om nom nom")
+	},
+}
+
 var authTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
 		return true

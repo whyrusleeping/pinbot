@@ -8,7 +8,7 @@ import (
 	shell "github.com/whyrusleeping/ipfs-shell"
 )
 
-var friends = []string{"whyrusleeping", "jbenet", "tperson", "krl", "kyledrake"}
+var friends = []string{"whyrusleeping", "jbenet", "tperson", "krl", "kyledrake", "zignig"}
 
 func isFriend(name string) bool {
 	for _, n := range friends {

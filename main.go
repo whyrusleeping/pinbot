@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	hb "github.com/whyrusleeping/hellabot"
@@ -17,6 +20,31 @@ func isFriend(name string) bool {
 		}
 	}
 	return false
+}
+
+type sayer interface {
+	Say(string)
+}
+
+func Pin(s sayer, hash string) {
+	s.Say(fmt.Sprintf("now pinning %s", hash))
+	for i, sh := range shs {
+		out, err := sh.Refs(hash, true)
+		if err != nil {
+			s.Say(fmt.Sprintf("[host %d] failed to grab refs for %s: %s", i, hash, err))
+			return
+		}
+
+		// throw away results
+		for range out {
+		}
+
+		err = sh.Pin(hash)
+		if err != nil {
+			s.Say(fmt.Sprintf("[host %d] failed to pin %s: %s", i, hash, err))
+		}
+	}
+	s.Say(fmt.Sprintf("pin %s successful!", hash))
 }
 
 var EatEverything = &hb.Trigger{
@@ -60,23 +88,7 @@ var pinTrigger = &hb.Trigger{
 		if len(parts) == 1 {
 			con.Channels[mes.To].Say("what do you want me to pin?")
 		} else {
-			con.Channels[mes.To].Say(fmt.Sprintf("now pinning %s", parts[1]))
-			out, err := sh.Refs(parts[1], true)
-			if err != nil {
-				con.Channels[mes.To].Say(fmt.Sprintf("failed to grab refs for %s: %s", parts[1], err))
-				return true
-			}
-
-			for k := range out {
-				fmt.Println(k)
-			}
-
-			err = sh.Pin(parts[1])
-			if err != nil {
-				con.Channels[mes.To].Say(fmt.Sprintf("failed to pin %s: %s", parts[1], err))
-			} else {
-				con.Channels[mes.To].Say(fmt.Sprintf("pin %s successful!", parts[1]))
-			}
+			Pin(con.Channels[mes.To], parts[1])
 		}
 		return true
 	},
@@ -96,12 +108,32 @@ var listTrigger = &hb.Trigger{
 	},
 }
 
-var sh *shell.Shell
+var shs []*shell.Shell
+
+func loadHosts() []string {
+	fi, err := os.Open("hosts")
+	if err != nil {
+		fmt.Println("failed to open hosts file, defaulting to localhost:5001")
+		return []string{"localhost:5001"}
+	}
+
+	var hosts []string
+	scan := bufio.NewScanner(fi)
+	for scan.Scan() {
+		hosts = append(hosts, scan.Text())
+	}
+	return hosts
+}
 
 func main() {
-	sh = shell.NewShell("localhost:5001")
+	name := flag.String("name", "pinbot-test", "set pinbots name")
+	flag.Parse()
 
-	con, err := hb.NewIrcConnection("irc.freenode.net:6667", "pinbot-test", false, true)
+	for _, h := range loadHosts() {
+		shs = append(shs, shell.NewShell(h))
+	}
+
+	con, err := hb.NewIrcConnection("irc.freenode.net:6667", *name, false, true)
 	if err != nil {
 		panic(err)
 	}

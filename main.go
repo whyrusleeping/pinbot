@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	hb "github.com/whyrusleeping/hellabot"
 	shell "github.com/whyrusleeping/ipfs-shell"
@@ -36,7 +37,7 @@ func Pin(s sayer, hash string) {
 		}
 
 		// throw away results
-		for range out {
+		for _ = range out {
 		}
 
 		err = sh.Pin(hash)
@@ -127,17 +128,41 @@ func loadHosts() []string {
 
 func main() {
 	name := flag.String("name", "pinbot-test", "set pinbots name")
+	server := "localhost:6667"
 	flag.Parse()
 
 	for _, h := range loadHosts() {
 		shs = append(shs, shell.NewShell(h))
 	}
 
-	con, err := hb.NewIrcConnection("irc.freenode.net:6667", *name, false, true)
+	con, err := hb.NewIrcConnection(server, *name, false, true)
 	if err != nil {
 		panic(err)
 	}
 
+	connectToFreenodeIpfs(con)
+	fmt.Println("Connection lost! attempting to reconnect!")
+	con.Close()
+
+	recontime := time.Second
+	for {
+		// Dont try to reconnect this time
+		con, err := hb.NewIrcConnection(server, *name, false, false)
+		if err != nil {
+			fmt.Println("ERROR CONNECTING: ", err)
+			time.Sleep(recontime)
+			recontime += time.Second
+			continue
+		}
+		recontime = time.Second
+
+		connectToFreenodeIpfs(con)
+		fmt.Println("Connection lost! attempting to reconnect!")
+		con.Close()
+	}
+}
+
+func connectToFreenodeIpfs(con *hb.IrcCon) {
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(listTrigger)
 	con.AddTrigger(OmNomNom)

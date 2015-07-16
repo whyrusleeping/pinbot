@@ -128,14 +128,14 @@ func loadHosts() []string {
 
 func main() {
 	name := flag.String("name", "pinbot-test", "set pinbots name")
-	server := "localhost:6667"
+	server := flag.String("server", "irc.freenode.net:6667", "set server to connect to")
 	flag.Parse()
 
 	for _, h := range loadHosts() {
 		shs = append(shs, shell.NewShell(h))
 	}
 
-	con, err := hb.NewIrcConnection(server, *name, false, true)
+	con, err := hb.NewIrcConnection(*server, *name, false, true)
 	if err != nil {
 		panic(err)
 	}
@@ -147,7 +147,7 @@ func main() {
 	recontime := time.Second
 	for {
 		// Dont try to reconnect this time
-		con, err := hb.NewIrcConnection(server, *name, false, false)
+		con, err := hb.NewIrcConnection(*server, *name, false, false)
 		if err != nil {
 			fmt.Println("ERROR CONNECTING: ", err)
 			time.Sleep(recontime)

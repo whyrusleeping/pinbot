@@ -45,7 +45,7 @@ func Pin(s sayer, hash string) {
 			s.Say(fmt.Sprintf("[host %d] failed to pin %s: %s", i, hash, err))
 		}
 	}
-	s.Say(fmt.Sprintf("pin %s successful!", hash))
+	s.Say(fmt.Sprintf("pin %s successful! -- http://gateway.ipfs.io/ipfs/%s", hash, hash))
 }
 
 var EatEverything = &hb.Trigger{

@@ -13,15 +13,15 @@ import (
 )
 
 var friends = []string{
-	"whyrusleeping", 
-	"jbenet", 
-	"tperson", 
-	"krl", 
-	"kyledrake", 
-	"zignig", 
-	"lgierth", 
-	"cryptix", 
-	"daviddias", 
+	"whyrusleeping",
+	"jbenet",
+	"tperson",
+	"krl",
+	"kyledrake",
+	"zignig",
+	"lgierth",
+	"cryptix",
+	"daviddias",
 	"mafintosh",
 }
 

@@ -6,10 +6,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	hb "github.com/whyrusleeping/hellabot"
 	shell "github.com/whyrusleeping/ipfs-shell"
+)
+
+var prefix = "!"
+
+var (
+	cmdBotsnack = prefix + "botsnack"
+	cmdFriends  = prefix + "friends"
+	cmdPin      = prefix + "pin"
 )
 
 var friends = []string{
@@ -70,7 +79,7 @@ var EatEverything = &hb.Trigger{
 
 var OmNomNom = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return mes.Content == "!botsnack"
+		return mes.Content == cmdBotsnack
 	},
 	func(irc *hb.IrcCon, mes *hb.Message) bool {
 		irc.Channels[mes.To].Say("om nom nom")
@@ -93,7 +102,7 @@ var authTrigger = &hb.Trigger{
 
 var pinTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return isFriend(mes.From) && strings.HasPrefix(mes.Content, "!pin")
+		return isFriend(mes.From) && strings.HasPrefix(mes.Content, cmdPin)
 	},
 	func(con *hb.IrcCon, mes *hb.Message) bool {
 		parts := strings.Split(mes.Content, " ")
@@ -108,7 +117,7 @@ var pinTrigger = &hb.Trigger{
 
 var listTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return mes.Content == "!friends"
+		return mes.Content == cmdFriends
 	},
 	func(con *hb.IrcCon, mes *hb.Message) bool {
 		out := "my friends are: "

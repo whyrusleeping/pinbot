@@ -14,6 +14,7 @@ import (
 )
 
 var prefix = "!"
+var gateway = "http://gateway.ipfs.io"
 
 var (
 	cmdBotsnack = prefix + "botsnack"
@@ -47,38 +48,41 @@ type sayer interface {
 	Say(string)
 }
 
-func tryPin(s sayer, hash string, host int, sh *shell.Shell) error {
-	out, err := sh.Refs(hash, true)
+func tryPin(s sayer, path string, sh *shell.Shell) error {
+	out, err := sh.Refs(path, true)
 	if err != nil {
-		return fmt.Errorf("[host %d] failed to grab refs for %s: %s", host, hash, err)
+		return fmt.Errorf("failed to grab refs for %s: %s", path, err)
 	}
 
 	// throw away results
 	for _ = range out {
 	}
 
-	err = sh.Pin(hash)
+	err = sh.Pin(path)
 	if err != nil {
-		return fmt.Errorf("[host %d] failed to pin %s: %s", host, hash, err)
+		return fmt.Errorf("failed to pin %s: %s", path, err)
 	}
 
 	return nil
 }
 
-func Pin(s sayer, hash string) {
+func Pin(s sayer, path string) {
+	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
+		path = "/ipfs/" + path
+	}
 
 	errs := make(chan error, len(shs))
 	var wg sync.WaitGroup
 
-	s.Say(fmt.Sprintf("now pinning %s", hash))
+	s.Say(fmt.Sprintf("now pinning %s", path))
 
 	// pin to every node concurrently.
 	for i, sh := range shs {
 		wg.Add(1)
 		go func(i int, sh *shell.Shell) {
 			defer wg.Done()
-			if err := tryPin(s, hash, i, sh); err != nil {
-				errs <- err
+			if err := tryPin(s, path, sh); err != nil {
+				errs <- fmt.Errorf("[host %d] %s", i, err)
 			}
 		}(i, sh)
 	}
@@ -97,8 +101,7 @@ func Pin(s sayer, hash string) {
 	}
 
 	successes := len(shs) - failed
-	s.Say(fmt.Sprintf("pin %d/%d successes -- http://gateway.ipfs.io/ipfs/%s",
-		successes, len(shs), hash))
+	s.Say(fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
 }
 
 var EatEverything = &hb.Trigger{

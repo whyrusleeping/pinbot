@@ -6,22 +6,32 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	hb "github.com/whyrusleeping/hellabot"
 	shell "github.com/whyrusleeping/ipfs-shell"
 )
 
+var prefix = "!"
+var gateway = "http://gateway.ipfs.io"
+
+var (
+	cmdBotsnack = prefix + "botsnack"
+	cmdFriends  = prefix + "friends"
+	cmdPin      = prefix + "pin"
+)
+
 var friends = []string{
-	"whyrusleeping", 
-	"jbenet", 
-	"tperson", 
-	"krl", 
-	"kyledrake", 
-	"zignig", 
-	"lgierth", 
-	"cryptix", 
-	"daviddias", 
+	"whyrusleeping",
+	"jbenet",
+	"tperson",
+	"krl",
+	"kyledrake",
+	"zignig",
+	"lgierth",
+	"cryptix",
+	"daviddias",
 	"mafintosh",
 }
 
@@ -38,25 +48,60 @@ type sayer interface {
 	Say(string)
 }
 
-func Pin(s sayer, hash string) {
-	s.Say(fmt.Sprintf("now pinning %s", hash))
-	for i, sh := range shs {
-		out, err := sh.Refs(hash, true)
-		if err != nil {
-			s.Say(fmt.Sprintf("[host %d] failed to grab refs for %s: %s", i, hash, err))
-			return
-		}
-
-		// throw away results
-		for _ = range out {
-		}
-
-		err = sh.Pin(hash)
-		if err != nil {
-			s.Say(fmt.Sprintf("[host %d] failed to pin %s: %s", i, hash, err))
-		}
+func tryPin(s sayer, path string, sh *shell.Shell) error {
+	out, err := sh.Refs(path, true)
+	if err != nil {
+		return fmt.Errorf("failed to grab refs for %s: %s", path, err)
 	}
-	s.Say(fmt.Sprintf("pin %s successful! -- http://gateway.ipfs.io/ipfs/%s", hash, hash))
+
+	// throw away results
+	for _ = range out {
+	}
+
+	err = sh.Pin(path)
+	if err != nil {
+		return fmt.Errorf("failed to pin %s: %s", path, err)
+	}
+
+	return nil
+}
+
+func Pin(s sayer, path string) {
+	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
+		path = "/ipfs/" + path
+	}
+
+	errs := make(chan error, len(shs))
+	var wg sync.WaitGroup
+
+	s.Say(fmt.Sprintf("now pinning %s", path))
+
+	// pin to every node concurrently.
+	for i, sh := range shs {
+		wg.Add(1)
+		go func(i int, sh *shell.Shell) {
+			defer wg.Done()
+			if err := tryPin(s, path, sh); err != nil {
+				errs <- fmt.Errorf("[host %d] %s", i, err)
+			}
+		}(i, sh)
+	}
+
+	// close the err chan when done.
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	// wait on the err chan and print every err we get as we get it.
+	var failed int
+	for err := range errs {
+		s.Say(err.Error())
+		failed++
+	}
+
+	successes := len(shs) - failed
+	s.Say(fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
 }
 
 var EatEverything = &hb.Trigger{
@@ -70,7 +115,7 @@ var EatEverything = &hb.Trigger{
 
 var OmNomNom = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return mes.Content == "!botsnack"
+		return mes.Content == cmdBotsnack
 	},
 	func(irc *hb.IrcCon, mes *hb.Message) bool {
 		irc.Channels[mes.To].Say("om nom nom")
@@ -93,7 +138,7 @@ var authTrigger = &hb.Trigger{
 
 var pinTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return isFriend(mes.From) && strings.HasPrefix(mes.Content, "!pin")
+		return isFriend(mes.From) && strings.HasPrefix(mes.Content, cmdPin)
 	},
 	func(con *hb.IrcCon, mes *hb.Message) bool {
 		parts := strings.Split(mes.Content, " ")
@@ -108,7 +153,7 @@ var pinTrigger = &hb.Trigger{
 
 var listTrigger = &hb.Trigger{
 	func(mes *hb.Message) bool {
-		return mes.Content == "!friends"
+		return mes.Content == cmdFriends
 	},
 	func(con *hb.IrcCon, mes *hb.Message) bool {
 		out := "my friends are: "

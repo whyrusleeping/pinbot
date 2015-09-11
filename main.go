@@ -13,18 +13,36 @@ import (
 	shell "github.com/whyrusleeping/ipfs-shell"
 )
 
-var prefix = "?"
+var prefix = "!"
 var gateway = "http://gateway.ipfs.io"
 
 var (
 	cmdBotsnack = prefix + "botsnack"
 	cmdFriends  = prefix + "friends"
-	cmdBefriend = prefix + "befriend"
-	cmdShun     = prefix + "shun"
 	cmdPin      = prefix + "pin"
 )
 
-var friends FriendsList
+var friends = []string{
+	"whyrusleeping",
+	"jbenet",
+	"tperson",
+	"krl",
+	"kyledrake",
+	"zignig",
+	"lgierth",
+	"cryptix",
+	"daviddias",
+	"mafintosh",
+}
+
+func isFriend(name string) bool {
+	for _, n := range friends {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
 
 type sayer interface {
 	Say(string)
@@ -86,6 +104,67 @@ func Pin(s sayer, path string) {
 	s.Say(fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
 }
 
+var EatEverything = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return true
+	},
+	func(irc *hb.IrcCon, mes *hb.Message) bool {
+		return true
+	},
+}
+
+var OmNomNom = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return mes.Content == cmdBotsnack
+	},
+	func(irc *hb.IrcCon, mes *hb.Message) bool {
+		irc.Channels[mes.To].Say("om nom nom")
+		return true
+	},
+}
+
+var authTrigger = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return true
+	},
+	func(con *hb.IrcCon, mes *hb.Message) bool {
+		if isFriend(mes.From) {
+			// do not consume messages from authed users
+			return false
+		}
+		return true
+	},
+}
+
+var pinTrigger = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return isFriend(mes.From) && strings.HasPrefix(mes.Content, cmdPin)
+	},
+	func(con *hb.IrcCon, mes *hb.Message) bool {
+		parts := strings.Split(mes.Content, " ")
+		if len(parts) == 1 {
+			con.Channels[mes.To].Say("what do you want me to pin?")
+		} else {
+			Pin(con.Channels[mes.To], parts[1])
+		}
+		return true
+	},
+}
+
+var listTrigger = &hb.Trigger{
+	func(mes *hb.Message) bool {
+		return mes.Content == cmdFriends
+	},
+	func(con *hb.IrcCon, mes *hb.Message) bool {
+		out := "my friends are: "
+		for _, n := range friends {
+			out += n + " "
+		}
+		con.Channels[mes.To].Say(out)
+		return true
+	},
+}
+
 var shs []*shell.Shell
 
 func loadHosts() []string {
@@ -107,11 +186,6 @@ func main() {
 	name := flag.String("name", "pinbot-test", "set pinbots name")
 	server := flag.String("server", "irc.freenode.net:6667", "set server to connect to")
 	flag.Parse()
-
-	if err := friends.Load(); err != nil {
-		panic(err)
-	}
-	fmt.Println("loaded", len(friends.friends), "friends")
 
 	for _, h := range loadHosts() {
 		shs = append(shs, shell.NewShell(h))
@@ -147,14 +221,10 @@ func main() {
 func connectToFreenodeIpfs(con *hb.IrcCon) {
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(listTrigger)
-	con.AddTrigger(befriendTrigger)
-	con.AddTrigger(shunTrigger)
 	con.AddTrigger(OmNomNom)
 	con.AddTrigger(EatEverything)
 	con.Start()
 	con.Join("#ipfs")
-	con.Join("#ip-berlin")
-	con.Join("#ip-seattle")
 
 	for _ = range con.Incoming {
 	}

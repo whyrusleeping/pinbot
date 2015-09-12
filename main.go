@@ -33,7 +33,7 @@ var friends = []string{
 	"cryptix",
 	"daviddias",
 	"mafintosh",
-	"davidar"
+	"davidar",
 }
 
 func isFriend(name string) bool {

@@ -161,7 +161,7 @@ var listTrigger = &hb.Trigger{
 		for _, n := range friends {
 			out += n + " "
 		}
-		con.Channels[mes.To].Say(out)
+		con.Notice(mes.From, out)
 		return true
 	},
 }

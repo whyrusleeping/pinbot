@@ -170,7 +170,11 @@ func main() {
 	}
 
 	if err := friends.Load(); err != nil {
-		panic(err)
+		if os.IsNotExist(err) {
+			friends = DefaultFriendsList
+		} else {
+			panic(err)
+		}
 	}
 	fmt.Println("loaded", len(friends.friends), "friends")
 

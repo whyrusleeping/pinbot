@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	hb "github.com/whyrusleeping/hellabot"
+	hb "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/whyrusleeping/hellabot"
 )
 
 var EatEverything = &hb.Trigger{

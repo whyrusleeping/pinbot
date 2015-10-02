@@ -1,0 +1,15 @@
+{
+  "name": "go-ipfs-api",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "go-multipart-files",
+      "hash": "QmPFoYD5K11BySD3j9vzAqNYtsRLaB67Sz1EthpFhqLQXT"
+    },
+    {
+      "name": "tar-utils",
+      "hash": "QmRpoWbVnwCA6NTUAC24woYp5zn1Kd1QyjXrxQSWQEnGSi"
+    }
+  ],
+  "language": "go"
+}

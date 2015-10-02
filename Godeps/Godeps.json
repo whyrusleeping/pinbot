@@ -1,0 +1,29 @@
+{
+	"ImportPath": "github.com/whyrusleeping/pinbot",
+	"GoVersion": "go1.5",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/ipfs/go-ipfs-api",
+			"Rev": "4fc5ee75972d2f52296e8880af46277cd88a8729"
+		},
+		{
+			"ImportPath": "github.com/mudler/sendfd",
+			"Rev": "f0fc74c138774ade8440c7c9a91280bb28171e4f"
+		},
+		{
+			"ImportPath": "github.com/whyrusleeping/go-multipart-files",
+			"Rev": "3be93d9f6b618f2b8564bfb1d22f1e744eabbae2"
+		},
+		{
+			"ImportPath": "github.com/whyrusleeping/hellabot",
+			"Rev": "029618443fdd02d8335f0c5327aae59dbf1f105f"
+		},
+		{
+			"ImportPath": "github.com/whyrusleeping/tar-utils",
+			"Rev": "e8a5890cfc9d59a203361237581468780d945b6e"
+		}
+	]
+}

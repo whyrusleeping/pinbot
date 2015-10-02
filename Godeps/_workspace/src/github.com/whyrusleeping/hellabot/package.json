@@ -1,0 +1,11 @@
+{
+  "name": "hellabot",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "sendfd",
+      "hash": "QmZk3DcHKZPbcaJ8ByMU3j9TepBGogo3T5dTH2ZAiUKoEo"
+    }
+  ],
+  "language": "go"
+}

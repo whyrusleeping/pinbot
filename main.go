@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	shell "github.com/ipfs/go-ipfs-api"
-	hb "github.com/whyrusleeping/hellabot"
+	shell "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/ipfs/go-ipfs-api"
+	hb "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/whyrusleeping/hellabot"
 )
 
 var prefix = "!"

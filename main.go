@@ -27,11 +27,7 @@ var (
 
 var friends FriendsList
 
-type sayer interface {
-	Say(string)
-}
-
-func tryPin(s sayer, path string, sh *shell.Shell) error {
+func tryPin(path string, sh *shell.Shell) error {
 	out, err := sh.Refs(path, true)
 	if err != nil {
 		return fmt.Errorf("failed to grab refs for %s: %s", path, err)
@@ -49,7 +45,7 @@ func tryPin(s sayer, path string, sh *shell.Shell) error {
 	return nil
 }
 
-func tryUnpin(s sayer, path string, sh *shell.Shell) error {
+func tryUnpin(path string, sh *shell.Shell) error {
 	out, err := sh.Refs(path, true)
 	if err != nil {
 		return fmt.Errorf("failed to grab refs for %s: %s", path, err)
@@ -67,7 +63,7 @@ func tryUnpin(s sayer, path string, sh *shell.Shell) error {
 	return nil
 }
 
-func Pin(s sayer, path string) {
+func Pin(b *hb.Bot, actor, path string) {
 	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
 		path = "/ipfs/" + path
 	}
@@ -75,14 +71,14 @@ func Pin(s sayer, path string) {
 	errs := make(chan error, len(shs))
 	var wg sync.WaitGroup
 
-	s.Say(fmt.Sprintf("now pinning %s", path))
+	b.Msg(actor, fmt.Sprintf("now pinning %s", path))
 
 	// pin to every node concurrently.
 	for i, sh := range shs {
 		wg.Add(1)
 		go func(i int, sh *shell.Shell) {
 			defer wg.Done()
-			if err := tryPin(s, path, sh); err != nil {
+			if err := tryPin(path, sh); err != nil {
 				errs <- fmt.Errorf("[host %d] %s", i, err)
 			}
 		}(i, sh)
@@ -97,15 +93,15 @@ func Pin(s sayer, path string) {
 	// wait on the err chan and print every err we get as we get it.
 	var failed int
 	for err := range errs {
-		s.Say(err.Error())
+		b.Msg(actor, err.Error())
 		failed++
 	}
 
 	successes := len(shs) - failed
-	s.Say(fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+	b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
 }
 
-func Unpin(s sayer, path string) {
+func Unpin(b *hb.Bot, actor, path string) {
 	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
 		path = "/ipfs/" + path
 	}
@@ -113,14 +109,14 @@ func Unpin(s sayer, path string) {
 	errs := make(chan error, len(shs))
 	var wg sync.WaitGroup
 
-	s.Say(fmt.Sprintf("now unpinning %s", path))
+	b.Msg(actor, fmt.Sprintf("now unpinning %s", path))
 
 	// pin to every node concurrently.
 	for i, sh := range shs {
 		wg.Add(1)
 		go func(i int, sh *shell.Shell) {
 			defer wg.Done()
-			if err := tryUnpin(s, path, sh); err != nil {
+			if err := tryUnpin(path, sh); err != nil {
 				errs <- fmt.Errorf("[host %d] %s", i, err)
 			}
 		}(i, sh)
@@ -135,12 +131,12 @@ func Unpin(s sayer, path string) {
 	// wait on the err chan and print every err we get as we get it.
 	var failed int
 	for err := range errs {
-		s.Say(err.Error())
+		b.Msg(actor, err.Error())
 		failed++
 	}
 
 	successes := len(shs) - failed
-	s.Say(fmt.Sprintf("unpin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+	b.Msg(actor, fmt.Sprintf("unpin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
 }
 
 var shs []*shell.Shell
@@ -178,7 +174,7 @@ func main() {
 	}
 	fmt.Println("loaded", len(friends.friends), "friends")
 
-	con, err := hb.NewIrcConnection(*server, *name, false, true)
+	con, err := hb.NewBot(*server, *name, hb.ReconOpt())
 	if err != nil {
 		panic(err)
 	}
@@ -190,7 +186,7 @@ func main() {
 	recontime := time.Second
 	for {
 		// Dont try to reconnect this time
-		con, err := hb.NewIrcConnection(*server, *name, false, false)
+		con, err := hb.NewBot(*server, *name)
 		if err != nil {
 			fmt.Println("ERROR CONNECTING: ", err)
 			time.Sleep(recontime)
@@ -205,7 +201,7 @@ func main() {
 	}
 }
 
-func connectToFreenodeIpfs(con *hb.IrcCon) {
+func connectToFreenodeIpfs(con *hb.Bot) {
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(unpinTrigger)
 	con.AddTrigger(listTrigger)
@@ -213,10 +209,10 @@ func connectToFreenodeIpfs(con *hb.IrcCon) {
 	con.AddTrigger(shunTrigger)
 	con.AddTrigger(OmNomNom)
 	con.AddTrigger(EatEverything)
-	con.Start()
-	con.Join("#ipfs")
-	con.Join("#ip-berlin")
-	con.Join("#ip-seattle")
+	con.Channels = []string{
+		"#ipfs",
+	}
+	con.Run()
 
 	for _ = range con.Incoming {
 	}

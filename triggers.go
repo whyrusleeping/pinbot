@@ -77,7 +77,7 @@ var listTrigger = hb.Trigger{
 		for n, _ := range friends.friends {
 			out += n + " "
 		}
-		con.Msg(mes.To, out)
+		con.Notice(mes.From, out)
 		return true
 	},
 }

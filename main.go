@@ -30,11 +30,6 @@ var (
 var friends FriendsList
 
 func addFile(path string, sh *shell.Shell) (string, error) {
-//    head, err := http.Head(path)
-  //  if head.StatusCode != http.StatusOK {
-    //    fmt.Errorf("Bad status from %s: %s", path, http.StatusCode)
-  //      return ""
-  //  }
     resp, err := http.Get(path)
     if err != nil {
         return "", fmt.Errorf("HTTP download failed for %s: %s", path, err)
@@ -77,18 +72,18 @@ func tryPin(path string, sh *shell.Shell) (string, error) {
     if strings.HasPrefix(path, "/ipfs") || strings.HasPrefix(path, "/ipns") {
 	    out, err := sh.Refs(path, true)
 	    if err != nil {
-		    return "none", fmt.Errorf("failed to grab refs for %s: %s", path, err)
+		    return "", fmt.Errorf("failed to grab refs for %s: %s", path, err)
         }
 	    // throw away results
 	    for _ = range out {
 	        err = sh.Pin(path)
 	    }
 	    if err != nil {
-		    return "none", fmt.Errorf("failed to pin %s: %s", path, err)
+		    return "", fmt.Errorf("failed to pin %s: %s", path, err)
 	    }
 	}
 
-	return "none", nil
+	return "", nil
 }
 
 func tryUnpin(path string, sh *shell.Shell) error {
@@ -125,7 +120,7 @@ func Pin(b *hb.Bot, actor, path string) {
                 if err != nil {
 			        errs <- fmt.Errorf("[host %d] %s", i, err)
                 }
-                if (hash != "none") {
+                if (hash != "") {
                     hashes <- hash
                 }
 	    }(i, sh)
@@ -135,18 +130,18 @@ func Pin(b *hb.Bot, actor, path string) {
 		wg.Wait()
 		close(errs)
 	}()
-
 	// wait on the err chan and print every err we get as we get it.
 	var failed int
 	for err := range errs {
 		b.Msg(actor, err.Error())
 		failed++
 	}
+    if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") && !strings.HasPrefix(path, "http") {
+		path = "/ipfs/" + path
+    }
 	successes := len(shs) - failed
-    if len(hashes) > 0 {
-        for hash := range hashes {
-	        b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway + "/ipfs/", hash))
-        }
+    if len(hashes) == 1 {
+	    b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway + "/ipfs/", <-hashes))
     } else {
 	    b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
     }

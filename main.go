@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+    "net/http"
+    "io"
 
 	shell "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/ipfs/go-ipfs-api"
 	hb "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/whyrusleeping/hellabot"
@@ -27,12 +29,42 @@ var (
 
 var friends FriendsList
 
+func addFile(path string, sh *shell.Shell) (string, error) {
+//    head, err := http.Head(path)
+  //  if head.StatusCode != http.StatusOK {
+    //    fmt.Errorf("Bad status from %s: %s", path, http.StatusCode)
+  //      return ""
+  //  }
+    resp, err := http.Get(path)
+    if err != nil {
+        return "", fmt.Errorf("HTTP download failed for %s: %s", path, err)
+    }
+    defer resp.Body.Close()
+    tokens := strings.Split(path, "/")
+    fileName := tokens[len(tokens)-1]
+    out, err := os.Create(fileName)
+    if err != nil {
+        return "", fmt.Errorf("Problem writing to temp file")
+    }
+    defer out.Close()
+    io.Copy(out, resp.Body)
+    r, err := os.Open(fileName)
+    if err != nil {
+        return "", fmt.Errorf("Problem opening temp file %s", fileName)
+    }
+    hash, err := sh.Add(r)
+    if err != nil {
+        return "", fmt.Errorf("Adding %s to IPFS failed: %s", fileName, err)
+    }
+    err = os.Remove(fileName)
+    return hash, err
+}
+
 func tryPin(path string, sh *shell.Shell) (string, error) {
 
     if strings.HasPrefix(path, "http") {
-        fmt.Print("adding link to URL")
-        hash, err := sh.AddLink(path)
-        fmt.Printf("added link to URL with hash %s", hash)
+        hash, err := addFile(path, sh)
+
         if err != nil {
             fmt.Printf("failed to pin %s: %s", hash, err)
             return "", fmt.Errorf("failed to pin %s: %s", path, err)
@@ -81,7 +113,7 @@ func Pin(b *hb.Bot, actor, path string) {
 
 	errs := make(chan error, len(shs))
 	var wg sync.WaitGroup
-    urls := make(chan string, 1)
+    hashes := make(chan string, 10)
 
 	b.Msg(actor, fmt.Sprintf("now pinning %s", path))
 	// pin to every node concurrently.
@@ -89,11 +121,12 @@ func Pin(b *hb.Bot, actor, path string) {
 	    wg.Add(1)
         go func(i int, sh *shell.Shell) {
 		    defer wg.Done()
-                if path, err := tryPin(path, sh); err != nil {
+                hash, err := tryPin(path, sh)
+                if err != nil {
 			        errs <- fmt.Errorf("[host %d] %s", i, err)
-                    if (path != "none") {
-                        urls <- path
-                    }
+                }
+                if (hash != "none") {
+                    hashes <- hash
                 }
 	    }(i, sh)
     }
@@ -109,9 +142,14 @@ func Pin(b *hb.Bot, actor, path string) {
 		b.Msg(actor, err.Error())
 		failed++
 	}
-    path = <-urls
 	successes := len(shs) - failed
-	b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+    if len(hashes) > 0 {
+        for hash := range hashes {
+	        b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway + "/ipfs/", hash))
+        }
+    } else {
+	    b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+    }
 }
 
 func Unpin(b *hb.Bot, actor, path string) {

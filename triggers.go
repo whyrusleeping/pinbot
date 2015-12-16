@@ -38,6 +38,7 @@ var authTrigger = hb.Trigger{
 	},
 }
 
+
 var pinTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
 		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, cmdPin)

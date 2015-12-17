@@ -2,6 +2,8 @@
 
 IRC bot that pins [IPFS](http://ipfs.io) files.
 
+Can specify either a hash (can begin with ipfs/ or ipns/) or an http:// URL.
+
 ## Usage
 
 In a terminal

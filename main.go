@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -27,22 +29,75 @@ var (
 
 var friends FriendsList
 
-func tryPin(path string, sh *shell.Shell) error {
-	out, err := sh.Refs(path, true)
+func addFile(path string, sh *shell.Shell) (string, error) {
+
+	resp, err := http.Get(path)
+        if resp.StatusCode != 200 {
+                return "", fmt.Errorf("HTTP download failed for %s: status code %d", path, resp.StatusCode)
+        }
+	if err != nil  {
+		return "", fmt.Errorf("HTTP download failed for %s: %s", path, err)
+	}
+
+	defer resp.Body.Close()
+	tokens := strings.Split(path, "/")
+	fileName := tokens[len(tokens)-1]
+	out, err := os.Create(fileName)
+
 	if err != nil {
-		return fmt.Errorf("failed to grab refs for %s: %s", path, err)
+		return "", fmt.Errorf("Error writing to temp file", fileName, err)
 	}
 
-	// throw away results
-	for _ = range out {
-	}
+	defer out.Close()
+	io.Copy(out, resp.Body)
+	r, err := os.Open(fileName)
 
-	err = sh.Pin(path)
 	if err != nil {
-		return fmt.Errorf("failed to pin %s: %s", path, err)
+		return "", fmt.Errorf("Error opening temp file %s: %s", fileName, err)
 	}
 
-	return nil
+	hash, err := sh.Add(r)
+
+	if err != nil {
+		return "", fmt.Errorf("Adding %s to IPFS failed: %s", fileName, err)
+	}
+	err = os.Remove(fileName)
+	return hash, err
+}
+
+func tryPin(path string, sh *shell.Shell) (string, error) {
+
+    if strings.HasPrefix(path, "http://") {
+		hash, err := addFile(path, sh)
+
+		if err != nil {
+			fmt.Printf("failed to pin %s: %s", hash, err)
+			return "", fmt.Errorf("failed to pin %s: %s", path, err)
+
+		}
+
+		return hash, nil
+
+	} else if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
+		path = "/ipfs/" + path
+	}
+
+	if strings.HasPrefix(path, "/ipfs") || strings.HasPrefix(path, "/ipns") {
+
+		out, err := sh.Refs(path, true)
+		if err != nil {
+			return "", fmt.Errorf("failed to grab refs for %s: %s", path, err)
+		}
+		// throw away results
+		for _ = range out {
+			err = sh.Pin(path)
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to pin %s: %s", path, err)
+		}
+	}
+
+	return "", nil
 }
 
 func tryUnpin(path string, sh *shell.Shell) error {
@@ -64,32 +119,32 @@ func tryUnpin(path string, sh *shell.Shell) error {
 }
 
 func Pin(b *hb.Bot, actor, path string) {
-	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
-		path = "/ipfs/" + path
-	}
 
 	errs := make(chan error, len(shs))
 	var wg sync.WaitGroup
+	hashes := make(chan string, 10)
 
 	b.Msg(actor, fmt.Sprintf("now pinning %s", path))
-
 	// pin to every node concurrently.
 	for i, sh := range shs {
 		wg.Add(1)
 		go func(i int, sh *shell.Shell) {
 			defer wg.Done()
-			if err := tryPin(path, sh); err != nil {
+			hash, err := tryPin(path, sh)
+			if err != nil {
 				errs <- fmt.Errorf("[host %d] %s", i, err)
+			}
+			if hash != "" {
+				hashes <- hash
 			}
 		}(i, sh)
 	}
-
 	// close the err chan when done.
 	go func() {
 		wg.Wait()
 		close(errs)
+		close(hashes)
 	}()
-
 	// wait on the err chan and print every err we get as we get it.
 	var failed int
 	for err := range errs {
@@ -97,8 +152,16 @@ func Pin(b *hb.Bot, actor, path string) {
 		failed++
 	}
 
+	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") && !strings.HasPrefix(path, "http") {
+		path = "/ipfs/" + path
+
+	}
 	successes := len(shs) - failed
-	b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+	if len(hashes) == 1 {
+		b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway+"/ipfs/", <-hashes))
+	} else {
+		b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+	}
 }
 
 func Unpin(b *hb.Bot, actor, path string) {
@@ -179,7 +242,7 @@ func main() {
 		panic(err)
 	}
 
-	connectToFreenodeIpfs(con)
+	connectToIRC(con)
 	fmt.Println("Connection lost! attempting to reconnect!")
 	con.Close()
 
@@ -195,13 +258,13 @@ func main() {
 		}
 		recontime = time.Second
 
-		connectToFreenodeIpfs(con)
+		connectToIRC(con)
 		fmt.Println("Connection lost! attempting to reconnect!")
 		con.Close()
 	}
 }
 
-func connectToFreenodeIpfs(con *hb.Bot) {
+func connectToIRC(con *hb.Bot) {
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(unpinTrigger)
 	con.AddTrigger(listTrigger)

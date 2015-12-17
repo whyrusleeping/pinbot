@@ -32,7 +32,10 @@ var friends FriendsList
 func addFile(path string, sh *shell.Shell) (string, error) {
 
 	resp, err := http.Get(path)
-	if err != nil {
+        if resp.StatusCode != 200 {
+                return "", fmt.Errorf("HTTP download failed for %s: status code %d", path, resp.StatusCode)
+        }
+	if err != nil  {
 		return "", fmt.Errorf("HTTP download failed for %s: %s", path, err)
 	}
 

@@ -218,7 +218,7 @@ func loadHosts() []string {
 
 func main() {
 	name := flag.String("name", "pinbot-test", "set pinbots name")
-	server := flag.String("server", "irc.rizon.net:6667", "set server to connect to")
+	server := flag.String("server", "irc.freenode.net:6667", "set server to connect to")
 	flag.Parse()
 
 	for _, h := range loadHosts() {
@@ -270,7 +270,7 @@ func connectToIRC(con *hb.Bot) {
 	con.AddTrigger(OmNomNom)
 	con.AddTrigger(EatEverything)
 	con.Channels = []string{
-		"#omgatestchannel",
+		"#ipfs",
 	}
 	con.Run()
 

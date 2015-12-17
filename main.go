@@ -64,7 +64,7 @@ func addFile(path string, sh *shell.Shell) (string, error) {
 
 func tryPin(path string, sh *shell.Shell) (string, error) {
 
-	if strings.HasPrefix(path, "http") {
+    if strings.HasPrefix(path, "http://") {
 		hash, err := addFile(path, sh)
 
 		if err != nil {

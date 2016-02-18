@@ -63,7 +63,22 @@ func tryUnpin(path string, sh *shell.Shell) error {
 	return nil
 }
 
-func Pin(b *hb.Bot, actor, path string) {
+var pinfile = "pins.log"
+
+func writePin(pin, label string) error {
+	fi, err := os.OpenFile(pinfile, os.O_APPEND|os.O_EXCL|os.O_WRONLY, 0660)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(fi, "%s\t%s\n", pin, label)
+	if err != nil {
+		return err
+	}
+	return fi.Close()
+}
+
+func Pin(b *hb.Bot, actor, path, label string) {
 	if !strings.HasPrefix(path, "/ipfs") && !strings.HasPrefix(path, "/ipns") {
 		path = "/ipfs/" + path
 	}
@@ -99,6 +114,9 @@ func Pin(b *hb.Bot, actor, path string) {
 
 	successes := len(shs) - failed
 	b.Msg(actor, fmt.Sprintf("pin %d/%d successes -- %s%s", successes, len(shs), gateway, path))
+	if err := writePin(path, label); err != nil {
+		b.Msg(actor, fmt.Sprintf("failed to write log entry for last pin: %s", err))
+	}
 }
 
 func Unpin(b *hb.Bot, actor, path string) {
@@ -156,10 +174,28 @@ func loadHosts() []string {
 	return hosts
 }
 
+func ensurePinLogExists() error {
+	_, err := os.Stat(pinfile)
+	if os.IsNotExist(err) {
+		fi, err := os.Create(pinfile)
+		if err != nil {
+			return err
+		}
+
+		fi.Close()
+	}
+	return nil
+}
+
 func main() {
 	name := flag.String("name", "pinbot-test", "set pinbots name")
 	server := flag.String("server", "irc.freenode.net:6667", "set server to connect to")
 	flag.Parse()
+
+	err := ensurePinLogExists()
+	if err != nil {
+		panic(err)
+	}
 
 	for _, h := range loadHosts() {
 		shs = append(shs, shell.NewShell(h))

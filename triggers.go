@@ -17,7 +17,7 @@ var EatEverything = hb.Trigger{
 
 var OmNomNom = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
-		return mes.Content == cmdBotsnack
+		return mes.Content == prefix+cmdBotsnack
 	},
 	func(irc *hb.Bot, mes *hb.Message) bool {
 		irc.Msg(mes.To, "om nom nom")
@@ -40,10 +40,11 @@ var authTrigger = hb.Trigger{
 
 var pinTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
-		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, cmdPin)
+		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, prefix+cmdPin)
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
-		parts := strings.Fields(mes.Content)
+		cmd := strings.TrimPrefix(mes.Content, prefix)
+		parts := strings.Fields(cmd)
 		if len(parts) < 3 {
 			con.Msg(mes.To, "usage: !pin <hash> <label>")
 		} else {
@@ -55,7 +56,7 @@ var pinTrigger = hb.Trigger{
 
 var unpinTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
-		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, cmdUnPin)
+		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, prefix+cmdUnPin)
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
 		parts := strings.Split(mes.Content, " ")
@@ -70,7 +71,7 @@ var unpinTrigger = hb.Trigger{
 
 var listTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
-		return mes.Content == cmdFriends
+		return mes.Content == prefix+cmdFriends
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
 		out := "my friends are: "
@@ -85,12 +86,12 @@ var listTrigger = hb.Trigger{
 var befriendTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
 		return friends.CanAddFriends(mes.From) &&
-			strings.HasPrefix(mes.Content, cmdBefriend)
+			strings.HasPrefix(mes.Content, prefix+cmdBefriend)
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
 		parts := strings.Split(mes.Content, " ")
 		if len(parts) != 3 {
-			con.Msg(mes.To, cmdBefriend+" <name> <perm>")
+			con.Msg(mes.To, prefix+cmdBefriend+" <name> <perm>")
 			return true
 		}
 		name := parts[1]
@@ -108,7 +109,7 @@ var befriendTrigger = hb.Trigger{
 var shunTrigger = hb.Trigger{
 	func(irc *hb.Bot, mes *hb.Message) bool {
 		return friends.CanAddFriends(mes.From) &&
-			strings.HasPrefix(mes.Content, cmdShun)
+			strings.HasPrefix(mes.Content, prefix+cmdShun)
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
 		parts := strings.Split(mes.Content, " ")

@@ -13,8 +13,8 @@ import (
 	hb "github.com/whyrusleeping/pinbot/Godeps/_workspace/src/github.com/whyrusleeping/hellabot"
 )
 
-var prefix = "!"
-var gateway = "https://ipfs.io"
+var prefix string
+var gateway string
 
 var (
 	cmdBotsnack = prefix + "botsnack"
@@ -188,9 +188,15 @@ func ensurePinLogExists() error {
 }
 
 func main() {
-	name := flag.String("name", "pinbot-test", "set pinbots name")
+	name := flag.String("name", "pinbot-test", "set pinbot's nickname")
 	server := flag.String("server", "irc.freenode.net:6667", "set server to connect to")
+	channel := flag.String("channel", "#pinbot-test", "set channel to join")
+	pre := flag.String("prefix", "!", "prefix of command messages")
+	gw := flag.String("gateway", "https://ipfs.io", "IPFS-to-HTTP gateway to use for success messages")
 	flag.Parse()
+
+	prefix = *pre
+	gateway = *gw
 
 	err := ensurePinLogExists()
 	if err != nil {
@@ -215,7 +221,7 @@ func main() {
 		panic(err)
 	}
 
-	connectToFreenodeIpfs(con)
+	connectToFreenodeIpfs(con, *channel)
 	fmt.Println("Connection lost! attempting to reconnect!")
 	con.Close()
 
@@ -231,13 +237,13 @@ func main() {
 		}
 		recontime = time.Second
 
-		connectToFreenodeIpfs(con)
+		connectToFreenodeIpfs(con, *channel)
 		fmt.Println("Connection lost! attempting to reconnect!")
 		con.Close()
 	}
 }
 
-func connectToFreenodeIpfs(con *hb.Bot) {
+func connectToFreenodeIpfs(con *hb.Bot, channel string) {
 	con.AddTrigger(pinTrigger)
 	con.AddTrigger(unpinTrigger)
 	con.AddTrigger(listTrigger)
@@ -245,9 +251,7 @@ func connectToFreenodeIpfs(con *hb.Bot) {
 	con.AddTrigger(shunTrigger)
 	con.AddTrigger(OmNomNom)
 	con.AddTrigger(EatEverything)
-	con.Channels = []string{
-		"#ipfs",
-	}
+	con.Channels = []string{channel}
 	con.Run()
 
 	for _ = range con.Incoming {

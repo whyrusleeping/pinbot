@@ -43,11 +43,11 @@ var pinTrigger = hb.Trigger{
 		return friends.CanPin(mes.From) && strings.HasPrefix(mes.Content, cmdPin)
 	},
 	func(con *hb.Bot, mes *hb.Message) bool {
-		parts := strings.Split(mes.Content, " ")
-		if len(parts) == 1 {
-			con.Msg(mes.To, "what do you want me to pin?")
+		parts := strings.Fields(mes.Content)
+		if len(parts) < 3 {
+			con.Msg(mes.To, "usage: !pin <hash> <label>")
 		} else {
-			Pin(con, mes.To, parts[1])
+			Pin(con, mes.To, parts[1], strings.Join(parts[2:], " "))
 		}
 		return true
 	},

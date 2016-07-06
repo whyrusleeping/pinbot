@@ -39,6 +39,9 @@ func tryPin(path string, sh *shell.Shell) error {
 
 	err = sh.Pin(path)
 	if err != nil {
+		if strings.Contains(err.Error(), "504 Gateway Time-out") {
+			err = fmt.Errorf("504 Gateway Time-out")
+		}
 		return fmt.Errorf("failed to pin %s: %s", path, err)
 	}
 
